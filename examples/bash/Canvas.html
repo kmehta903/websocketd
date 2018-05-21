@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Coding Challenge</title>
+</head>
+<body>
+  <div id="msg"></div>
+  <canvas id="canvas" width="800" height="100" style="border:1px solid #c3c3c3;"></canvas>
+  <p><button onclick="myCanvas()">Fill Canvas</button></p>
+  <script>
+    function myCanvas() {
+      var ws = new WebSocket('ws://localhost:8080/');
+      var randomData;
+
+      //reads random data file (output.bin) as a binary file and creates 8-bit typed array from raw bytes
+      var oReq = new XMLHttpRequest();
+      oReq.open("GET", "/output.bin", true);
+      oReq.responseType = "arraybuffer";
+      oReq.onload = function (oEvent) {
+        var arrayBuffer = oReq.response;
+        if (arrayBuffer) {
+          var array = new Uint8Array(arrayBuffer);
+          console.log(array);
+          //convert typed array to binary string
+          var bitsPerByte = 8;
+          var string = "";
+          function repeat(str, num) {
+            if (str.length === 0 || num <= 1) {
+              if (num === 1) {
+                return str;
+              }
+              return '';
+            }
+            var result = '',
+            pattern = str;
+            while (num > 0) {
+              if (num & 1) {
+                result += pattern;
+              }
+              num >>= 1;
+              pattern += pattern;
+            }
+            return result;
+          }
+          function lpad(obj, str, num) {
+            return repeat(str, num - obj.length) + obj;
+          }
+          Array.prototype.forEach.call(array, function (element) {
+            string += lpad(element.toString(2), "0", bitsPerByte);
+          });
+
+          //transform binary string to regular array and create 2D canvas
+          randomData = string.split('');
+          var c=document.getElementById("canvas");
+          var ctx=c.getContext("2d");
+          
+          //clears canvas and shows error message if data file is too small
+          if (randomData.length < 80000) {
+            document.getElementById('msg').textContent = 'ERROR';
+            ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+          } else {
+            document.getElementById('msg').textContent = 'Canvas Filled!';
+            //can also randomly generate array of 0/1s for testing using JavaScript as seen in comment below
+            //var randomData = Array.from({length: ctx.canvas.width*ctx.canvas.height}, () => Math.floor(Math.random() * 2));
+            
+            //iterate over array and determine x & y coordinates to draw 1x1 pixel rectangle for each element
+            for (var i=0; i<randomData.length; i++) {
+              if (+randomData[i] === 1) {
+                ctx.fillStyle = "black";
+              } else {
+                ctx.fillStyle = "white";
+              }
+              x = i%ctx.canvas.width;
+              y = Math.floor(i/ctx.canvas.width);
+              ctx.fillRect(x,y,1,1);
+            }
+          }
+        }
+      };
+      
+      oReq.send(null);
+      
+    }
+  </script>
+  
+</body>
+</html>
